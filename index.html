@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Happy Birthday 🎂</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body { background: #000; overflow: hidden; font-family: 'Georgia', serif; }
+
+    /* Three.js canvas is prepended to body by main.js */
+
+    /* ── Loading screen ─────────────────────────────────────────────── */
+    #loading {
+      position: fixed; inset: 0;
+      background: #0a0a1a;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      color: #f0d0e0; z-index: 100;
+      transition: opacity 0.8s;
+    }
+    #loading h1 { font-size: 3rem; margin-bottom: 1rem; }
+    #loading p  { font-size: 1rem; opacity: 0.7; margin-top: 1rem; }
+
+    .spinner {
+      width: 42px; height: 42px;
+      border: 3px solid rgba(240,200,220,0.25);
+      border-top-color: #f0d0e0;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Hint bar ───────────────────────────────────────────────────── */
+    #hint {
+      position: fixed; bottom: 1.4rem; left: 50%; transform: translateX(-50%);
+      color: rgba(255,255,255,0.65); font-size: 0.82rem;
+      pointer-events: none;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+      transition: opacity 0.6s;
+      white-space: nowrap;
+    }
+
+    /* ── Shared overlay ─────────────────────────────────────────────── */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.72);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 50;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.35s;
+    }
+    .overlay.visible { opacity: 1; pointer-events: all; }
+
+    .panel {
+      background: #fffef7;
+      border-radius: 14px;
+      padding: 2.4rem 3rem;
+      max-width: 460px; width: 92%;
+      text-align: center;
+      box-shadow: 0 24px 70px rgba(0,0,0,0.55);
+      transform: translateY(12px) scale(0.95);
+      transition: transform 0.35s;
+      color: #2a2a2a;
+    }
+    .overlay.visible .panel { transform: translateY(0) scale(1); }
+
+    .panel h2 { font-size: 1.55rem; margin-bottom: 0.9rem; }
+    .panel p  { font-size: 0.97rem; line-height: 1.85; white-space: pre-wrap; margin-bottom: 1.6rem; }
+
+    .btn {
+      display: inline-block;
+      padding: 0.72rem 2.1rem;
+      background: #c0566e;
+      color: #fff;
+      border: none; border-radius: 30px;
+      font-family: 'Georgia', serif;
+      font-size: 0.97rem; cursor: pointer;
+      transition: background 0.18s, transform 0.1s;
+    }
+    .btn:hover  { background: #a0405a; transform: scale(1.04); }
+    .btn:active { transform: scale(0.97); }
+
+    /* ── Card overlay ───────────────────────────────────────────────── */
+    #card-overlay .panel { border-top: 5px solid #c0566e; }
+    #card-overlay h2     { color: #c0566e; }
+    .card-stamp           { font-size: 3.2rem; margin-bottom: 0.3rem; }
+
+    /* ── Clue overlay ───────────────────────────────────────────────── */
+    #clue-overlay .panel  { border-top: 5px solid #4a90d9; }
+    #clue-overlay h2      { color: #2e6db4; }
+    .gift-label {
+      font-size: 0.72rem; letter-spacing: 2.5px;
+      text-transform: uppercase; color: #aaa;
+      margin-bottom: 0.4rem;
+    }
+
+    /* ── Celebration overlay ────────────────────────────────────────── */
+    #celebrate-overlay { background: rgba(0,0,0,0.82); }
+    #celebrate-overlay .panel {
+      background: linear-gradient(140deg, #fff8f0 0%, #fff0f8 100%);
+      border: 2px solid #ffb3c8;
+    }
+    #celebrate-overlay h2 { font-size: 1.9rem; color: #c0566e; }
+    .celebration-emoji    { font-size: 3.2rem; margin-bottom: 0.5rem; }
+
+    /* ── Confetti canvas ────────────────────────────────────────────── */
+    #confetti-canvas {
+      position: fixed; inset: 0;
+      pointer-events: none; z-index: 49;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Loading screen -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <h1>🎂</h1>
+    <p>Indlæser dit eventyr…</p>
+  </div>
+
+  <!-- Bottom hint -->
+  <div id="hint">Find det svævende brev ✉️ &nbsp;·&nbsp; Klik for at gå &nbsp;·&nbsp; Træk for at kigge dig om</div>
+
+  <!-- Card overlay (shown when she clicks the envelope) -->
+  <div id="card-overlay" class="overlay">
+    <div class="panel">
+      <div class="card-stamp">✉️</div>
+      <h2>Et kort til dig</h2>
+      <p id="card-message"></p>
+      <button class="btn" id="card-btn">Find dine gaver →</button>
+    </div>
+  </div>
+
+  <!-- Clue overlay (shown when she clicks a gift box) -->
+  <div id="clue-overlay" class="overlay">
+    <div class="panel">
+      <div class="gift-label" id="gift-label">Gave 1 af 2</div>
+      <h2>🎁 Du fandt en gave!</h2>
+      <p id="clue-message"></p>
+      <button class="btn" id="clue-btn">Fandt den! ✓</button>
+    </div>
+  </div>
+
+  <!-- Celebration overlay (shown after all gifts found) -->
+  <div id="celebrate-overlay" class="overlay">
+    <div class="panel">
+      <div class="celebration-emoji">🎉🎂🎉</div>
+      <h2>Tillykke med fødselsdagen!</h2>
+      <p id="celebrate-message"></p>
+    </div>
+  </div>
+
+  <!-- Confetti canvas (drawn in JS) -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three":          "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+      "three/addons/":  "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module" src="main.js"></script>
+</body>
+</html>
